@@ -20,6 +20,7 @@ ecgen.py / labgen.py に続く第3のモダリティ。設計思想は共通：
     python abggen.py --profiles          # 病態プロファイル一覧
 """
 
+import html as _html
 import json
 import math
 import argparse
@@ -487,14 +488,18 @@ def render_html(v, p, steps, warns, prof):
     .hh{font-size:12px;background:#f2f7f2;border-left:4px solid #6a9b6a;
         padding:8px 12px;margin-top:8px;font-family:monospace}
     """
+    # 症例JSON（生成AIが作ることもある）の文字列は、HTML として解釈されないようエスケープする
+    e = lambda x: _html.escape(str(x))
     h = ["<!DOCTYPE html><html lang='ja'><head><meta charset='utf-8'>",
-         f"<title>血液ガス分析 {pt.get('id','')}</title><style>{css}</style></head><body>",
+         # スクリプトや外部読み込みを一切許可しない（報告書は表示だけ）
+         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:\">",
+         f"<title>血液ガス分析 {e(pt.get('id',''))}</title><style>{css}</style></head><body>",
          "<h1>動脈血液ガス分析報告書</h1>"]
-    meta = f"ID: {pt.get('id','')}　{pt.get('age','')}歳　{sex}　検体: {p.get('sample','動脈血')}"
+    meta = f"ID: {e(pt.get('id',''))}　{e(pt.get('age',''))}歳　{e(sex)}　検体: {e(p.get('sample','動脈血'))}"
     if p.get("collected_at"):
-        meta += f"　採取: {p['collected_at']}"
+        meta += f"　採取: {e(p['collected_at'])}"
     if pt.get("note"):
-        meta += f"　／　{pt['note']}"
+        meta += f"　／　{e(pt['note'])}"
     h.append(f"<div class='meta'>{meta}</div>")
 
     for panel in ["酸塩基", "酸素化", "代謝", "電解質"]:
@@ -525,7 +530,7 @@ def render_html(v, p, steps, warns, prof):
             h.append(f"<div class='step'><b>{title}</b><br>{body}</div>")
         if p.get("diagnosis_label") or prof.get("_label"):
             lab = p.get("diagnosis_label") or prof.get("_label")
-            h.append(f"<div class='note'><b>想定病態：</b>{lab}</div>")
+            h.append(f"<div class='note'><b>想定病態：</b>{e(lab)}</div>")
     else:
         h.append("<div class='note'>※ 判読は演習用に非表示にしています。</div>")
 
